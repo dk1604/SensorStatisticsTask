@@ -7,7 +7,7 @@ trait SensorStatistics {
 
   def numOfFailedMeasurements():Int
 
-  def minAvgMaxHumidity(): Unit
+  def minAvgMaxHumidity(): Iterable[MinAvgMaxHumidityComponent]
 
   def sortsSensorsByHighestAvgHumidity():Unit
 }
