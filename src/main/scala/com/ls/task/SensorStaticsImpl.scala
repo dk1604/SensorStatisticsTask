@@ -7,8 +7,10 @@ import scala.collection.immutable.ListMap
 
 case class SensorDataComponent(sensorId: String, humidity: String)
 
+case class MinAvgMaxHumidityComponent(sensorId: String, min: Any, mean: String, max: Any)
+
 class SensorStaticsImpl {
-  var listOfFiles: List[File] = null
+  var listOfFiles: List[File] = List.empty
   var mean = ""
   var humidityListBuffer = new ListBuffer[List[String]]()
   var sensoridListBuffer = new ListBuffer[List[String]]()
@@ -16,10 +18,11 @@ class SensorStaticsImpl {
 
   def numOfProcessedFiles(dir: String): Int = {
     val filePath = new File(dir)
-    filePath.exists && filePath.isDirectory match {
-      case true => listOfFiles = filePath.listFiles.filter(_.isFile).toList
-        listOfFiles.size
-      case false => List.empty.size
+    if (filePath.exists && filePath.isDirectory) {
+      listOfFiles = filePath.listFiles.filter(_.isFile).toList
+      listOfFiles.size
+    } else {
+      List.empty.size
     }
   }
 
@@ -48,63 +51,64 @@ class SensorStaticsImpl {
 
       sensoridListBuffer += sensoridList.collect().toList
     }
-    val finalSenserIDList: List[String] = sensoridListBuffer.toList.flatten
+    val finalSenserIDList: List[String] = humidityListBuffer.toList.flatten
     finalSenserIDList.length
   }
 
   def numOfFailedMeasurements(): Int = {
     val HumidityListwithNaNData: List[String] = humidityListBuffer.toList.flatten
     var count = 0
-    for (i <- 0 to (humidityListBuffer.toList.flatten.length - 1)) {
-      HumidityListwithNaNData(i).equals("NaN") match {
-        case true => count += count
-        case false => count
+    for (i <- humidityListBuffer.toList.flatten.indices) {
+      if (HumidityListwithNaNData(i).equals("NaN")) {
+        count = count + 1
       }
     }
     count
   }
 
-  def minAvgMaxHumidity(): Unit = {
+  def minAvgMaxHumidity(): Iterable[MinAvgMaxHumidityComponent] = {
     val finalSenserIDList: List[String] = sensoridListBuffer.toList.flatten
     val finalHumidityList: List[Int] = humidityListBuffer.toList.flatten.map(e => if (e == "NaN") "0" else e).map(x => x.toInt)
-    var count = 0
+    var count1 = 0
     for (strSensorId <- finalSenserIDList) {
-      map.contains(strSensorId) match {
-        case true => map += (strSensorId -> (map(strSensorId) += finalHumidityList(count)))
-        case false => map += (strSensorId -> ListBuffer(finalHumidityList(count)))
+      if (map.contains(strSensorId)) {
+        map += (strSensorId -> (map(strSensorId) += finalHumidityList(count1)))
+      } else {
+        map += (strSensorId -> ListBuffer(finalHumidityList(count1)))
       }
-      count += count
+      count1 = count1 + 1
     }
     println("sensorId" + "," + "min" + "," + "avg" + "," + "max :")
-    for (i <- map) {
+    val minAvgMaxHumidity = for (i <- map) yield {
       val remainder = i._2.filterNot(p => p.equals(0))
-      val sum = (i._2.filterNot(p => p.equals(0)).sum)
+      val sum = remainder.sum
       var avg = 0
-      (!remainder.isEmpty || !sum.equals(0)) match {
-        case true => avg = (sum / remainder.size)
-        case false => avg = 0
+      if (remainder.nonEmpty || !sum.equals(0)) {
+        avg = sum / remainder.size
+      } else {
+        avg = 0
       }
 
-      mean = if (i._2.filterNot(p => p.equals(0)).isEmpty) "NaN" else if (avg != 0) avg.toString else "NaN"
-      val min = if (i._2.filterNot(p => p.equals(0)).isEmpty) "NaN" else i._2.filterNot(p => p.equals(0)).min
-      val max = if (i._2.filterNot(p => p.equals(0)).isEmpty) "NaN" else i._2.filterNot(p => p.equals(0)).max
-      println(i._1 + "," + min + "," + mean + "," + max)
+      mean = if (remainder.isEmpty) "NaN" else if (avg != 0) avg.toString else "NaN"
+      val min = if (i._2.forall(p => p.equals(0))) "NaN" else remainder.min
+      val max = if (i._2.forall(p => p.equals(0))) "NaN" else remainder.max
+      MinAvgMaxHumidityComponent(i._1, min, mean, max)
     }
+    minAvgMaxHumidity
   }
 
   def sortsSensorsByHighestAvgHumidity(): Unit = {
     var sortMap: Map[String, Int] = Map()
     for (i <- map) {
       val remainder = i._2.filterNot(p => p.equals(0))
-      val sum = i._2.filterNot(p => p.equals(0)).sum
+      val sum = remainder.sum
       var avg = 0
-      if (!remainder.isEmpty || !sum.equals(0)) {
-        avg = (sum / remainder.size)
+      if (remainder.nonEmpty || !sum.equals(0)) {
+        avg = sum / remainder.size
       } else {
         avg = 0
       }
-      mean = if (i._2.filterNot(p => p.equals(0)).isEmpty) "NaN" else if (avg != 0) avg.toString else "NaN"
-
+      mean = if (remainder.isEmpty) "NaN" else if (avg != 0) avg.toString else "NaN"
       val mean1 = if (i._2 == List(0)) "NaN" else mean
       if (mean1 != "NaN") {
         sortMap += (i._1 -> mean1.toInt)
@@ -116,9 +120,10 @@ class SensorStaticsImpl {
 
     print("sort sensors data by highest avg humidity :")
     for (i <- ListMap(sortMap.toSeq.sortWith(_._2 > _._2): _*)) {
-      (i._2 == 0) match {
-        case true => print(i._1 -> "NAN" + ", ")
-        case false => print(i._1 -> i._2 + ", ")
+      if (i._2 == 0) {
+        print(i._1 -> "NaN" + ", ")
+      } else {
+        print(i._1 -> i._2 + ", ")
       }
     }
   }
