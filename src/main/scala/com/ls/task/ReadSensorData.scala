@@ -14,5 +14,4 @@ object ReadSensorData {
     sensorSpark.minAvgMaxHumidity()
     sensorSpark.sortsSensorsByHighestAvgHumidity()
   }
-  case class SensorMeasurment(sensorid:String,humidity : String)
 }
