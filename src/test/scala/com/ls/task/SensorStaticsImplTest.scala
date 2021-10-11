@@ -10,8 +10,11 @@ class SensorStaticsImplTest extends FunSuite with Matchers with MockitoSugar {
   val actualPath = "src/test/resources"
   val emptyPath = ""
   val mockSensorStaticsImpl = new SensorStaticsImpl()
-  val testList = List(new File("src/main/resources/leader-1.csv"))
+  val testList = List(new File("src/test/resources/leader-test-1.csv"))
   val testHumidityListBuffer = ListBuffer(List("10", "88", "NaN", "80", "NaN", "78", "98"))
+  val testConf = new SparkConf().setAppName("TestApp").setMaster("local[*]")
+  val testSC = mock[SparkContext]
+
   test("number of processed file should be 1") {
     assert(mockSensorStaticsImpl.numOfProcessedFiles(actualPath).equals(1))
   }
@@ -21,8 +24,6 @@ class SensorStaticsImplTest extends FunSuite with Matchers with MockitoSugar {
   }
 
   test("number of processed measurements shoul be 3") {
-    val testConf = new SparkConf().setAppName("TestApp").setMaster("local[*]")
-    val testSC = mock[SparkContext]
     mockSensorStaticsImpl.listOfFiles = testList
     assert(mockSensorStaticsImpl.numOfProcessedMeasurements.equals(3))
   }
